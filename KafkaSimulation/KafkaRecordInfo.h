@@ -11,6 +11,8 @@ namespace OA
     namespace ModelDataAPI
     {
         enum class FepSimulationItemType;
+        enum class ControlType;
+        class FepSimulationControlConsequenceItemInfo;
     }
 }
 
@@ -61,4 +63,22 @@ protected:
     OA::OAUInt32 m_interval;
     OA::OAVariant m_minValue;
     OA::OAVariant m_maxValue;
+};
+
+class KafkaControlConsequenceRecordInfo : public KafkaRecordInfo
+{
+public:
+    KafkaControlConsequenceRecordInfo();
+    virtual ~KafkaControlConsequenceRecordInfo();
+
+    OA::ModelDataAPI::ControlType GetControlType() const;
+    OA::OAString GetTarget() const;
+
+    void SetControlType(OA::ModelDataAPI::ControlType controlType);
+    void SetTarget(OA::OAString target);
+
+protected:
+    OA::ModelDataAPI::ControlType m_controlType;
+    OA::OAString m_target;
+   
 };

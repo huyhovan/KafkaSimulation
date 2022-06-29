@@ -1,6 +1,7 @@
 #include "KafkaRecordInfo.h"
 #include <OAModelDataAPI/FepSimulation/FepSimulationItemInfo.h>
 
+
 KafkaRecordInfo::KafkaRecordInfo()
 {
 
@@ -76,7 +77,7 @@ void KafkaRecordInfo::SetItemType(OA::ModelDataAPI::FepSimulationItemType itemTy
 
 KafkaRandomGeneratorRecordInfo::KafkaRandomGeneratorRecordInfo()    
 {
-    SetItemType(OA::ModelDataAPI::FepSimulationItemType::RandomGenerator);
+    //SetItemType(OA::ModelDataAPI::FepSimulationItemType::RandomGenerator);
 }
 
 KafkaRandomGeneratorRecordInfo::~KafkaRandomGeneratorRecordInfo()
@@ -114,3 +115,35 @@ OA::OAVariant KafkaRandomGeneratorRecordInfo::GetMaxValue() const
     return m_maxValue;
 }
 
+
+// Control Consequence
+
+KafkaControlConsequenceRecordInfo::KafkaControlConsequenceRecordInfo()
+{
+    SetItemType(OA::ModelDataAPI::FepSimulationItemType::ControlConsequence);
+}
+
+KafkaControlConsequenceRecordInfo::~KafkaControlConsequenceRecordInfo()
+{
+
+}
+
+OA::ModelDataAPI::ControlType KafkaControlConsequenceRecordInfo::GetControlType() const
+{
+    return m_controlType;
+}
+
+OA::OAString KafkaControlConsequenceRecordInfo::GetTarget() const
+{
+    return m_target;
+}
+
+void KafkaControlConsequenceRecordInfo::SetControlType(OA::ModelDataAPI::ControlType controlType)
+{
+    m_controlType = controlType;
+}
+
+void KafkaControlConsequenceRecordInfo::SetTarget(OA::OAString target)
+{
+    m_target = target;
+}

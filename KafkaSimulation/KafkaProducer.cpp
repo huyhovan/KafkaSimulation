@@ -1,9 +1,8 @@
 #include "KafkaProducer.h"
 #include "KafkaRecordInfo.h"
+#include "KafkaConfig.h"
 
 #include <nlohmann/json.hpp>
-#include <XMLParser/tinyxml2.h>
-#include <XMLParser/tinyxml2.cpp>
 #include <tchar.h>
 #include <vector>
 #include <random>
@@ -11,15 +10,22 @@
 #include <OAModelDataAPI/FepSimulation/FepSimulationItemInfo.h>
 #include <OAModelDataAPI/FepSimulation/FepSimulationInitializationItemInfo.h>
 #include <OAModelDataAPI/FepSimulation/FepSimulationRandomGeneratorItemInfo.h>
+#include <OAModelDataAPI/FepSimulation/FepSimulationControlConsequenceItemInfo.h>
 #include <OABase/StringUtility.h>
+#include <OAModelDataAPI/Compilation/CompilationDataAPI.h>
+
 
 using namespace nlohmann;
-using namespace tinyxml2;
+
 
 KafkaProducer::KafkaProducer()
     :m_pProducer(nullptr)
 {
-    LoadSettingInfoFromXML();
+    std::unique_ptr<KafkaConfig> pKafkaConfig = std::make_unique<KafkaConfig>();
+
+    m_strBroker = pKafkaConfig->GetBorker();
+    m_strTopics = pKafkaConfig->GetTopics();
+    m_nPpartition = pKafkaConfig->GetPartition();
 }
 
 KafkaProducer::~KafkaProducer()
@@ -65,16 +71,7 @@ bool KafkaProducer::Initialize()
 }
 
 void KafkaProducer::ProductMsg()
-{
-   /* const std::string jsonRecord = R"(
-            {
-            "key" : "point1",
-            "value": 123,
-            "timestamp" : 123456789,
-            "status": 1
-            }        
-     )";*/
-  
+{   
     for (size_t i = 0; i < m_listRecords.size(); i++)
     {
         OA::ModelDataAPI::FepSimulationItemType itemType = m_listRecords[i]->GetItemType();
@@ -137,13 +134,6 @@ void KafkaProducer::ProductMsg()
             m_pProducer->poll(100);
         }
     }
-
-    /* json jsonRecord;
-
-     jsonRecord["key"] = listRecord[i]->GetKey();
-     jsonRecord["value"] = listRecord;
-     jsonRecord["timestamp"] = timestamp;
-     jsonRecord["status"] = status;*/
 }
 
 void KafkaProducer::ProductMsg(const std::string& key, const std::string value, std::string& timestamp, std::string& status)
@@ -187,7 +177,14 @@ void KafkaProducer::ProductMsg(KafkaRecordInfo* pRecord)
 
     int nDump = 0;
 
-    switch (itemType)
+    nDump = 4;
+
+    jsonRecord["key"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetKey());
+    jsonRecord["value"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetValue().ToString());
+    jsonRecord["timestamp"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetTimestamp().ToString());
+    jsonRecord["status"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetQuality().ToString());
+
+    /*switch (itemType)
     {
     case OA::ModelDataAPI::FepSimulationItemType::Initialization:
     {
@@ -212,6 +209,9 @@ void KafkaProducer::ProductMsg(KafkaRecordInfo* pRecord)
         break;
     }
     case OA::ModelDataAPI::FepSimulationItemType::ControlConsequence:
+
+        jsonRecord["key"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetKey());
+
         break;
     case OA::ModelDataAPI::FepSimulationItemType::ControlScenario:
         break;
@@ -219,7 +219,7 @@ void KafkaProducer::ProductMsg(KafkaRecordInfo* pRecord)
         break;
     default:
         break;
-    }
+    }*/
 
     OA::OAString  stt;
     std::string s = jsonRecord.dump(nDump);
@@ -244,12 +244,11 @@ void KafkaProducer::ProductMsg(KafkaRecordInfo* pRecord)
 
 void KafkaProducer::CreateKafkaRecord(const std::vector<std::unique_ptr<OA::ModelDataAPI::FepSimulationItemInfo>>& lisItems)
 {
-
-    // For Testing
     m_listRecords.clear();
-    CreatInitializeRecord();
-    CreateSingleRandomRecord();
-
+   
+    // For Testing    
+    //CreatInitializeRecord();
+    //CreateSingleRandomRecord();   
 
     for (size_t i = 0; i < lisItems.size(); i++)
     {
@@ -275,17 +274,22 @@ void KafkaProducer::CreateKafkaRecord(const std::vector<std::unique_ptr<OA::Mode
             pRecord->SetDataType(strDataType);
             pRecord->SetItemType(OA::ModelDataAPI::FepSimulationItemType::Initialization);                                
 
+            m_listRecords.emplace_back(std::move(pRecord));
+            
             break;
         }
         case OA::ModelDataAPI::FepSimulationItemType::RandomGenerator:
         {
             auto pItem = static_cast<OA::ModelDataAPI::FepSimulationRandomGeneratorItemInfo*>(lisItems[i].get());
 
-            KafkaRandomGeneratorRecordInfo* pRandomRecord = static_cast<KafkaRandomGeneratorRecordInfo*>(pRecord.get());         
+             std::unique_ptr<KafkaRandomGeneratorRecordInfo> pRandomRecord = std::make_unique<KafkaRandomGeneratorRecordInfo>();
+     
+            pRandomRecord->SetKey(key);
 
             OA::OAUInt16 dataType = pItem->GetDataType();
             OA::OAString strDataType = OA::StringUtility::BuiltinDataTypeToString(dataType);
-            
+            pRandomRecord->SetDataType(strDataType);
+
             OA::OAUInt32 interval = pItem->GetInterval();
             pRandomRecord->SetInterval(interval);            
 
@@ -293,12 +297,18 @@ void KafkaProducer::CreateKafkaRecord(const std::vector<std::unique_ptr<OA::Mode
             pRandomRecord->SetMinvalue(minValue);          
 
             OA::OAVariant maxValue = pItem->GetMaxValue();
-            pRandomRecord->SetMaxValue(maxValue);                     
+            pRandomRecord->SetMaxValue(maxValue);       
+
+            pRandomRecord->SetItemType(OA::ModelDataAPI::FepSimulationItemType::RandomGenerator);
+
+            m_listRecords.emplace_back(std::move(pRandomRecord));
 
             break;
         }           
         case OA::ModelDataAPI::FepSimulationItemType::ControlConsequence:
+        {       
             break;
+        }
         case OA::ModelDataAPI::FepSimulationItemType::ControlScenario:
             break;
         case OA::ModelDataAPI::FepSimulationItemType::TriggerScenario:
@@ -326,31 +336,11 @@ const std::vector<std::unique_ptr<KafkaRecordInfo>>& KafkaProducer::GetListRecor
     return m_listRecords;
 }
 
-void KafkaProducer::InitSettingInfoXML()
-{
-    tinyxml2::XMLDocument xmlDoc;
-
-    XMLElement* pRoot = xmlDoc.NewElement("SettingKafkaInfo");
-    pRoot->SetAttribute("Version", "");
-    pRoot->SetAttribute("Platform", "");
-    xmlDoc.InsertFirstChild(pRoot);
-
-    XMLElement* address = xmlDoc.NewElement("Address");
-    address->SetText("localhost:9092");
-    pRoot->InsertEndChild(address);
-
-    XMLElement* pjName = xmlDoc.NewElement("ProjectName");
-    pjName->SetText("oa-ds-data-input");
-    pRoot->InsertEndChild(pjName);
-
-    xmlDoc.SaveFile("SettingInfo.xml");
-}
-
 void KafkaProducer::CreateSingleRandomRecord()
 {
     std::cout <<  ".RandomGenerator Simulation" << std::endl;
 
-    std::unique_ptr<KafkaRandomGeneratorRecordInfo> randomRecord = std::make_unique<KafkaRandomGeneratorRecordInfo>();;
+    std::unique_ptr<KafkaRandomGeneratorRecordInfo> randomRecord = std::make_unique<KafkaRandomGeneratorRecordInfo>();
 
     OA::OAString keyRandomTest = _T("PointRandomTest");
     randomRecord->SetKey(keyRandomTest);
@@ -413,21 +403,4 @@ bool KafkaProducer::HasDataChange(KafkaRecordInfo* pRecord)
     }
 
     return false;
-}
-
-void KafkaProducer::LoadSettingInfoFromXML()
-{
-    tinyxml2::XMLDocument doc;
-    tinyxml2::XMLError err = doc.LoadFile("SettingInfo.xml");
-    if (err != XML_SUCCESS)
-    {
-        InitSettingInfoXML();
-        LoadSettingInfoFromXML();
-
-        return;
-    }
-
-    m_strBroker = doc.FirstChildElement("SettingKafkaInfo")->FirstChildElement("Address")->GetText();
-    m_strTopics = doc.FirstChildElement("SettingKafkaInfo")->FirstChildElement("ProjectName")->GetText();
-    m_nPpartition = 0;
 }

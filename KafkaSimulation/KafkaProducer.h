@@ -77,21 +77,19 @@ public:
     void AddKafkaRecord(std::unique_ptr<KafkaRecordInfo> pRecord);
     void Stop();
 
-    const std::vector<std::unique_ptr<KafkaRecordInfo>>& GetListRecord() const;
+    const std::vector<std::unique_ptr<KafkaRecordInfo>>& GetListRecord() const;    
     
-    void LoadSettingInfoFromXML();
-
     bool HasDataChange(KafkaRecordInfo* pRecord);
-protected:
-    void InitSettingInfoXML();
+
+protected:    
     void CreateSingleRandomRecord();
     void CreatInitializeRecord();
 
-    
 
-protected:
+protected:    
     std::string m_strTopics;
     std::string m_strBroker;
+    std::string m_strTopicControl;
     int m_nPpartition;
 
     RdKafka::Producer* m_pProducer;

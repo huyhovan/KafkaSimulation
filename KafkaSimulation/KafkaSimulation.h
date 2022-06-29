@@ -3,13 +3,13 @@
 #include "KafkaProducer.h"
 #include "SimulationItemManager.h"
 #include "KafkaRecordInfo.h"
-
+#include "KafkaConsumer.h"
 
 #include <OAModelDataAPI/FepSimulation/FepSimulationItemInfo.h>
 
 std::unique_ptr<KafkaProducer> m_pKafkaProducer;
 std::unique_ptr<SimulationItemManager> m_pSimullationItemMnager;
-
+std::unique_ptr<KafkaConsumer> m_pKafkaConsumer;
 
 
 void Initialize()
@@ -24,5 +24,9 @@ void Initialize()
     {
         m_pSimullationItemMnager->Initialize();
     }
+
+    if (!m_pKafkaConsumer)
+        m_pKafkaConsumer = std::make_unique<KafkaConsumer>();
+    m_pKafkaConsumer->Initialize();
 }
 
