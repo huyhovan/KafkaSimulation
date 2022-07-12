@@ -8,7 +8,7 @@
 #include <OAModelDataAPI/FepSimulation/FepSimulationItemInfo.h>
 
 std::unique_ptr<KafkaProducer> m_pKafkaProducer;
-std::unique_ptr<SimulationItemManager> m_pSimullationItemMnager;
+std::unique_ptr<SimulationItemManager> m_pSimullationItemManager;
 std::unique_ptr<KafkaConsumer> m_pKafkaConsumer;
 
 
@@ -19,14 +19,14 @@ void Initialize()
 
     m_pKafkaProducer->Initialize();
 
-    m_pSimullationItemMnager = std::make_unique<SimulationItemManager>();
-    if (m_pSimullationItemMnager)
+    m_pSimullationItemManager = std::make_unique<SimulationItemManager>();
+    if (m_pSimullationItemManager)
     {
-        m_pSimullationItemMnager->Initialize();
+        m_pSimullationItemManager->Initialize();
     }
 
     if (!m_pKafkaConsumer)
-        m_pKafkaConsumer = std::make_unique<KafkaConsumer>();
+        m_pKafkaConsumer = std::make_unique<KafkaConsumer>(m_pSimullationItemManager.get(), m_pKafkaProducer.get());
     m_pKafkaConsumer->Initialize();
 }
 

@@ -16,7 +16,7 @@
 #include <tchar.h>
 
 #include "KafkaConfig.h"
-
+#include "KafkaRecordInfo.h"
 
 using namespace OA;
 using namespace OA::ModelDataAPI;
@@ -73,6 +73,11 @@ OA::OAStatus SimulationItemManager::LoadSimulationItems()
 
         m_listItems.emplace_back(std::move(pFepSimulationInfo));
     }
+       
+    for (auto& pItem : m_listItems)
+    {
+        UpdateMapKeySimulationItems(pItem.get());
+    }   
 
     return status;
 }
@@ -131,6 +136,63 @@ OA::OAStatus SimulationItemManager::LoadFepItem()
 const std::vector<std::unique_ptr<FepSimulationItemInfo>>& SimulationItemManager::GetListItem() const
 {
     return m_listItems;
+}
+
+void SimulationItemManager::UpdateMapKeySimulationItems(OA::ModelDataAPI::FepSimulationItemInfo* simulationItem)
+{
+    OA::OAString key = simulationItem->GetItemKey();
+    
+    auto it = m_mapKeySimulationItems.find(key);
+
+    if (it == m_mapKeySimulationItems.end())
+    {
+        std::vector<FepSimulationItemInfo*> listRecord;
+        listRecord.emplace_back(simulationItem);
+
+        m_mapKeySimulationItems[key] = listRecord;
+        return;
+    }
+    else
+    {
+        it->second.emplace_back(simulationItem);
+    }
+}
+
+std::vector<FepSimulationItemInfo*> SimulationItemManager::GetListSimulationItemByKey(OA::OAString key)
+{
+    auto it = m_mapKeySimulationItems.find(key);
+
+    if (it != m_mapKeySimulationItems.end())
+    {
+        const std::vector<FepSimulationItemInfo*>& listRecord  = it->second; 
+        return listRecord;
+    }
+     
+    return {};
+}
+
+void SimulationItemManager::DeleteSimulationItem(FepSimulationItemInfo* simulationItem)
+{
+    OA::OAString keyMethod = simulationItem->GetItemKey();
+
+    std::vector<FepSimulationItemInfo*> listRecord = GetListSimulationItemByKey(keyMethod);
+
+    if (listRecord.size() > 0)
+    {
+        listRecord.erase(std::remove(listRecord.begin(), listRecord.end(), simulationItem), listRecord.end());
+
+        m_mapKeySimulationItems[keyMethod] = listRecord;
+    }
+}
+
+const std::map<OA::OAString, std::vector<FepSimulationItemInfo*>>& SimulationItemManager::GetMapKeySimulationItems() const
+{
+    return m_mapKeySimulationItems;
+}
+
+std::map<OA::OAString, std::vector<OA::ModelDataAPI::FepSimulationItemInfo*>> SimulationItemManager::GetMapKeySimulationItems()
+{
+    return m_mapKeySimulationItems;
 }
 
 void SimulationItemManager::SetValueBaseOnFepSimulationItemInfo(OA::ModelDataAPI::FepSimulationItemInfo* fepSimulationItemInfo, OA::OAVariant& outValue)

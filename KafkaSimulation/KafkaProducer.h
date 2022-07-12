@@ -73,17 +73,19 @@ public:
     void ProductMsg();
     void ProductMsg(KafkaRecordInfo* pRecord);
     void ProductMsg(const std::string& key, const std::string value, std::string& timestamp, std::string& status);
-    void CreateKafkaRecord(const std::vector<std::unique_ptr<OA::ModelDataAPI::FepSimulationItemInfo>>& lisItems);
+    void CreateKafkaRecord(const std::vector<std::unique_ptr<OA::ModelDataAPI::FepSimulationItemInfo>>& listItems);
     void AddKafkaRecord(std::unique_ptr<KafkaRecordInfo> pRecord);
     void Stop();
 
     const std::vector<std::unique_ptr<KafkaRecordInfo>>& GetListRecord() const;    
-    
+    const std::map<OA::OAString, OA::OAVariant>& GetMapKeyValue() const;
     bool HasDataChange(KafkaRecordInfo* pRecord);
+
+    void UpdateMapKeyValue(OA::OAString key, OA::OAVariant& value);
 
 protected:    
     void CreateSingleRandomRecord();
-    void CreatInitializeRecord();
+    void CreateInitializeRecord();
 
 
 protected:    

@@ -5,14 +5,16 @@
 #include <OABase/OAString.h>
 #include <OABase/OAVariant.h>
 #include <OABase/StringUtility.h>
+#include <OABase/OAUniqueID.h>
+
+#include <OAModelDataAPI/FepSimulation/FepSimulationControlConsequenceItemInfo.h>
 
 namespace OA
 {
     namespace ModelDataAPI
     {
         enum class FepSimulationItemType;
-        enum class ControlType;
-        class FepSimulationControlConsequenceItemInfo;
+        class FepSimulationControlScenarioItemInfo;
     }
 }
 
@@ -71,14 +73,35 @@ public:
     KafkaControlConsequenceRecordInfo();
     virtual ~KafkaControlConsequenceRecordInfo();
 
-    OA::ModelDataAPI::ControlType GetControlType() const;
+    OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType GetControlType() const;
     OA::OAString GetTarget() const;
 
-    void SetControlType(OA::ModelDataAPI::ControlType controlType);
+    void SetControlType(OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType controlType);
     void SetTarget(OA::OAString target);
 
 protected:
-    OA::ModelDataAPI::ControlType m_controlType;
+    OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType m_controlType;
     OA::OAString m_target;
    
+};
+
+
+class KafkaControlScenarioRecordInfo : public KafkaRecordInfo
+{
+public:
+    KafkaControlScenarioRecordInfo();
+    virtual ~KafkaControlScenarioRecordInfo();
+
+    const std::vector<OA::OAUniqueID>& GetInputs() const;
+    const OA::OAString& GetContent() const;
+    const OA::OAString& GetParameters() const;
+
+    void SetContent(const OA::OAString& content);
+    void SetParameters(const OA::OAString& params);
+    void SetInputs(const std::vector<OA::OAUniqueID>& listInputs);
+
+protected:
+    OA::OAString m_content;
+    OA::OAString m_parameters;
+    std::vector<OA::OAUniqueID> m_listInput;
 };

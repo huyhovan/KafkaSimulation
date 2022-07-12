@@ -1,5 +1,6 @@
 #include "KafkaRecordInfo.h"
 #include <OAModelDataAPI/FepSimulation/FepSimulationItemInfo.h>
+#include <OAModelDataAPI/FepSimulation/FepSimulationControlScenarioItemInfo.h>
 
 
 KafkaRecordInfo::KafkaRecordInfo()
@@ -128,7 +129,7 @@ KafkaControlConsequenceRecordInfo::~KafkaControlConsequenceRecordInfo()
 
 }
 
-OA::ModelDataAPI::ControlType KafkaControlConsequenceRecordInfo::GetControlType() const
+OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType KafkaControlConsequenceRecordInfo::GetControlType() const
 {
     return m_controlType;
 }
@@ -138,7 +139,7 @@ OA::OAString KafkaControlConsequenceRecordInfo::GetTarget() const
     return m_target;
 }
 
-void KafkaControlConsequenceRecordInfo::SetControlType(OA::ModelDataAPI::ControlType controlType)
+void KafkaControlConsequenceRecordInfo::SetControlType(OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType controlType)
 {
     m_controlType = controlType;
 }
@@ -146,4 +147,47 @@ void KafkaControlConsequenceRecordInfo::SetControlType(OA::ModelDataAPI::Control
 void KafkaControlConsequenceRecordInfo::SetTarget(OA::OAString target)
 {
     m_target = target;
+}
+
+
+// Control Scenario
+
+KafkaControlScenarioRecordInfo::KafkaControlScenarioRecordInfo()
+{
+    SetItemType(OA::ModelDataAPI::FepSimulationItemType::ControlScenario);
+}
+
+KafkaControlScenarioRecordInfo::~KafkaControlScenarioRecordInfo()
+{
+   
+}
+
+const std::vector<OA::OAUniqueID>& KafkaControlScenarioRecordInfo::GetInputs() const
+{
+    return m_listInput;
+}
+
+const OA::OAString& KafkaControlScenarioRecordInfo::GetContent() const
+{
+    return m_content;
+}
+
+const OA::OAString& KafkaControlScenarioRecordInfo::GetParameters() const
+{
+    return m_parameters;
+}
+
+void KafkaControlScenarioRecordInfo::SetContent(const OA::OAString& content)
+{
+    m_content = content;
+}
+
+void KafkaControlScenarioRecordInfo::SetParameters(const OA::OAString& params)
+{
+    m_parameters = params;
+}
+
+void KafkaControlScenarioRecordInfo::SetInputs(const std::vector<OA::OAUniqueID>& listInputs)
+{
+    m_listInput = listInputs;
 }

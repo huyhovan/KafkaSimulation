@@ -2,17 +2,23 @@
 #include "KafkaConfig.h"
 #include "KafkaRecordInfo.h"
 #include "KafkaProducer.h"
+#include "SimulationItemManager.h"
 
-#include <nlohmann/json.hpp>
-
+#include <OAModelDataAPI/FepSimulation/FepSimulationItemInfo.h>
 #include <OAModelDataAPI/FepSimulation/FepSimulationControlConsequenceItemInfo.h>
 #include <OABase/StringUtility.h>
 
+#include <chrono>
+#include <time.h>
+#include <algorithm>
+
+constexpr int LOCAL_TIME_ZONE = 7;
 
 using namespace nlohmann;
 
 
-KafkaConsumer::KafkaConsumer()
+KafkaConsumer::KafkaConsumer(SimulationItemManager* pSimulatioMng, KafkaProducer* pProduct)
+    : m_pSimullationItemManager(pSimulatioMng), m_pKafkaProducer(pProduct)
 {
     std::unique_ptr<KafkaConfig> pKafkaConfig = std::make_unique<KafkaConfig>();
 
@@ -21,14 +27,14 @@ KafkaConsumer::KafkaConsumer()
     m_nPartition = pKafkaConfig->GetPartition();
 
     if (!m_pKafkaProducer)
-        m_pKafkaProducer = std::make_unique<KafkaProducer>();
+        m_pKafkaProducer = std::make_unique<KafkaProducer>().get();
 
-    m_pKafkaProducer->Initialize();
+    //m_pKafkaProducer->Initialize();
 }
 
 KafkaConsumer::~KafkaConsumer()
 {
-
+    Stop();
 }
 
 bool KafkaConsumer::Initialize()
@@ -91,7 +97,6 @@ bool KafkaConsumer::Initialize()
         std::cerr << "Failed to start consumer" << errstr.c_str() << std::endl;
     }
 
-
     return true;
 }
 
@@ -130,6 +135,76 @@ void KafkaConsumer::Stop()
     m_bRun = false;
 }
 
+OA::ModelDataAPI::FepSimulationItemType KafkaConsumer::GetSimualtatioItemType(int nItemType)
+{
+    if (nItemType == 1)
+    {
+        return  OA::ModelDataAPI::FepSimulationItemType::Initialization;
+    }
+
+    if (nItemType == 2)
+    {
+        return  OA::ModelDataAPI::FepSimulationItemType::RandomGenerator;
+    }
+
+    if (nItemType == 3 )
+    {
+        return OA::ModelDataAPI::FepSimulationItemType::ControlConsequence;
+    }
+
+    if (nItemType == 4)
+    {
+        return OA::ModelDataAPI::FepSimulationItemType::ControlScenario;
+    }
+
+    if (nItemType == 5)
+    {
+        return  OA::ModelDataAPI::FepSimulationItemType::TriggerScenario;
+    }    
+}
+
+OA::OADateTime KafkaConsumer::GetTimestampWithLocalTimeZone(RdKafka::MessageTimestamp& kafkaTimestamp)
+{
+    OA::OADateTime timestamp; 
+    
+    if (kafkaTimestamp.type != RdKafka::MessageTimestamp::MSG_TIMESTAMP_NOT_AVAILABLE)
+    {
+        std::string timeprefix;
+        if (kafkaTimestamp.type == RdKafka::MessageTimestamp::MSG_TIMESTAMP_CREATE_TIME)
+        {
+            timeprefix = "create time";
+        }
+        else if (kafkaTimestamp.type == RdKafka::MessageTimestamp::MSG_TIMESTAMP_LOG_APPEND_TIME) {
+            timeprefix = "log append time";
+        }
+
+        unsigned long long milli = kafkaTimestamp.timestamp + (unsigned long long)LOCAL_TIME_ZONE * 60 * 60 * 1000;
+
+        auto mTime = std::chrono::milliseconds(milli);
+
+        auto tp = std::chrono::time_point<std::chrono::system_clock>(mTime);
+        auto tt = std::chrono::system_clock::to_time_t(tp);
+
+        tm timeinfo;
+        ::gmtime_s(&timeinfo, &tt);
+
+       /* char s[60]{ 0 };
+        ::sprintf(s, "%04d-%02d-%02d %02d:%02d:%02d:%03d", timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+
+        std::string sTime = s;        */
+
+        timestamp = OA::OADateTime::BuildDateTime(timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+        OA::OAString strTimestamp = timestamp.ToShortStringWithLocalTimeZone();
+
+        return timestamp;
+    }
+    else
+    {
+        OA::OAString strTimestamp = OA::OADateTime::GetNullTimeStringWithOAFormat();
+        return NULL;
+    }   
+}
+
 void KafkaConsumer::MsgConsumer(RdKafka::Message* message, void* opaque)
 {
     switch (message->err())
@@ -148,12 +223,11 @@ void KafkaConsumer::MsgConsumer(RdKafka::Message* message, void* opaque)
 
         std::string strRecord = static_cast<const char*>(message->payload());
 
-        // for timestamp
-        RdKafka::MessageTimestamp timestamp = message->timestamp();
-        OA::OADateTime time(timestamp.timestamp);
-        OA::OAString strTimestamp = time.ToStringWithLocalTimeZone();
+        // for timestamp        
+        OA::OADateTime timestamp = GetTimestampWithLocalTimeZone(message->timestamp());       
 
-        ParseKafkaDetection(strRecord, time);
+        //ParseKafkaDetection(strRecord, time);
+        CreateKafkaRecordControl(strRecord, timestamp);
 
         m_nLastOffset = message->offset();
         break;
@@ -181,27 +255,14 @@ void KafkaConsumer::MsgConsumer(RdKafka::Message* message, void* opaque)
     }
 }
 
-void KafkaConsumer::ParseKafkaDetection(std::string msg, OA::OADateTime timestamp)
+void KafkaConsumer::CreateKafkaRecordControl(std::string msg, OA::OADateTime& timestamp)
 {
-    std::unique_ptr<KafkaRecordInfo> pRecord = std::make_unique<KafkaRecordInfo>();
-
-    OA::OAString strTimestamp = timestamp.ToStringWithLocalTimeZone();
-    pRecord->SetTimestamp(timestamp);
-
     json jsonObj = json::parse(msg);
 
-    std::string key = jsonObj["key"];
-   
-    OA::OAString targetKey = OA::StringUtility::Utf8ToUtf16(jsonObj["target"]);    
-    pRecord->SetKey(targetKey);
+    // Determine which Method been called by (key- itemType)
+    OA::OAString key = OA::StringUtility::Utf8ToUtf16(jsonObj["key"]);
 
-    OA::OAVariant varValue;
-    int value = jsonObj["value"];
-
-    OA::OAUInt8 ctrlType;
-    ctrlType = jsonObj["controltype"];
-
-    int itemType = jsonObj["itemType"];
+    int nItemType = jsonObj["itemType"];
 
     json data = jsonObj["inputArgument"];
     std::vector<bool> listArgument;
@@ -209,62 +270,321 @@ void KafkaConsumer::ParseKafkaDetection(std::string msg, OA::OADateTime timestam
     {
         listArgument.emplace_back(*it);
     }
-            
-    
-    if (itemType == 2 /*Control Consequence*/ && listArgument.size()==1)
+
+    OA::ModelDataAPI::FepSimulationItemType itemType = GetSimualtatioItemType(nItemType);
+
+    const std::map<OA::OAString, std::vector<OA::ModelDataAPI::FepSimulationItemInfo*>>& mapKeySimulationItems = m_pSimullationItemManager->GetMapKeySimulationItems();
+
+    auto it = mapKeySimulationItems.find(key);
+    if (it != mapKeySimulationItems.end())
     {
-        switch (ctrlType)
+        std::vector<OA::ModelDataAPI::FepSimulationItemInfo*> listItem = it->second;
+        for (auto& pItem : listItem)
         {
-        case 0:/*RB: reverse bit*/
-        {
-            bool tempValue = (value) ? true : false;
+            std::unique_ptr<KafkaRecordInfo> pRecord = std::make_unique<KafkaRecordInfo>();
 
-            if (listArgument[0])
-                tempValue = !tempValue;
+            if (itemType == pItem->GetItemType())
+            {
+                const std::map<OA::OAString, OA::OAVariant>& m_mapKeyValue = m_pKafkaProducer->GetMapKeyValue();
 
-            varValue = tempValue;
+                switch (itemType)
+                {
+                case OA::ModelDataAPI::FepSimulationItemType::Initialization:
+                    break;
+                case OA::ModelDataAPI::FepSimulationItemType::RandomGenerator:
+                    break;
+                case OA::ModelDataAPI::FepSimulationItemType::ControlConsequence:
+                {
+                    OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo* pControlConsequence = static_cast<OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo*>(pItem);
 
-            break;
+                    OA::OAString targetKey = pControlConsequence->GetTarget();
+                    pRecord->SetKey(targetKey);
+
+                    pRecord->SetTimestamp(timestamp);
+
+                    pRecord->SetQuality(OA_StatusCode_Good);
+
+                    OA::OAVariant value;
+                    auto iter = m_mapKeyValue.find(targetKey);
+                    if (iter != m_mapKeyValue.end())
+                    {
+                        value = iter->second;
+                    }
+
+                    OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType controlType = pControlConsequence->GetControlType();
+                    switch (controlType)
+                    {
+                    case OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType::RB:
+                    {
+                        if (listArgument[0])
+                            value = !value;                     
+
+                        break;
+                    }
+                    case OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType::CB:
+                    {
+                        value = (listArgument[0]) ? 2 : 1;
+                        break;
+                    }                      
+                    case OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType::SP:
+                    {
+                        value = (listArgument[0]) ? 1 : 0;                       
+                        break;
+                    }
+                    case OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType::TapChgUp:
+                    {
+                        OA::OAInt16 tempValue;
+                        OA::OAStatus stt = value.GetInt16(tempValue);
+                        if (stt == OA_StatusCode_Good)
+                        {
+                            if (listArgument[0])
+                                tempValue++;
+                            value = tempValue;
+                        }
+
+                        break;
+                    }
+                    case OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType::TapChgDn:
+                    {
+                        OA::OAInt16 tempValue;
+                        OA::OAStatus stt = value.GetInt16(tempValue);
+                        if (stt == OA_StatusCode_Good)
+                        {
+                            if (listArgument[0])
+                                tempValue--;
+                            value = tempValue;
+                        }
+
+                        break;
+                    }
+                    default:
+                        break;
+                    }
+                    pRecord->SetValue(value);
+
+                    m_pKafkaProducer->ProductMsg(pRecord.get());
+                    m_pKafkaProducer->UpdateMapKeyValue(targetKey, pRecord->GetValue());
+                    
+                    break;
+                }                  
+                case OA::ModelDataAPI::FepSimulationItemType::ControlScenario:
+                    break;
+                case OA::ModelDataAPI::FepSimulationItemType::TriggerScenario:
+                    break;
+                default:
+                    break;
+                }
+
+                break;
+            }
         }
-        case 1: /*CB*/
-        {
-            value = (listArgument[0]) ? 2 : 1;
-            varValue = value;
-            break;
-        }
-        case 2: /*SP*/
-        {
-            value = (listArgument[0]) ? 1 : 0;     
-            varValue = value;
-            break;
-        }
-        case 3: /*TapChgup*/
-        {
-            if (listArgument[0])
-                value++;
-
-            varValue = value;
-
-            break;
-        }
-        case 4: /*TapChgDown*/
-        {
-            if (listArgument[0])
-                value--;
-
-            varValue = value;
-
-            break;
-        }
-       
-        default:
-            break;
-        }
-       
     }
-   
-    pRecord->SetValue(varValue);
-    pRecord->SetQuality(OA_StatusCode_Good);
-    
-    m_pKafkaProducer->ProductMsg(pRecord.get());    
+    else
+    {
+        std::cout << "The Method been called is not Simulate Control" << std::endl;
+    }
 }
+
+//void KafkaConsumer::ParseKafkaDetection(std::string msg, OA::OADateTime timestamp)
+//{
+//    json jsonObj = json::parse(msg);
+//
+//    // Determine which Method been called by (key- itemType)
+//    std::string key = jsonObj["key"];
+//    int itemType = jsonObj["itemType"];
+//    OA::OAString targetKey = OA::StringUtility::Utf8ToUtf16(jsonObj["target"]);
+//
+//    auto it = m_mapKeyRecord.find(targetKey);
+//    if (it == m_mapKeyRecord.end())
+//    {
+//        std::unique_ptr<KafkaRecordInfo> pRecord = std::make_unique<KafkaRecordInfo>();
+//
+//        pRecord->SetKey(targetKey);
+//
+//        OA::OAString strTimestamp = timestamp.ToStringWithLocalTimeZone();
+//        pRecord->SetTimestamp(timestamp);
+//
+//        json data = jsonObj["inputArgument"];
+//        std::vector<bool> listArgument;
+//        for (auto it = data.begin(); it != data.end(); ++it)
+//        {
+//            listArgument.emplace_back(*it);
+//        }
+//
+//        OA::OAVariant varValue;
+//        int value = jsonObj["value"];
+//
+//        if (itemType == 2 /*Control Consequence*/ && listArgument.size() == 1)
+//        {
+//            pRecord->SetItemType(OA::ModelDataAPI::FepSimulationItemType::ControlConsequence);
+//            KafkaControlConsequenceRecordInfo* pTemp = static_cast<KafkaControlConsequenceRecordInfo*>(pRecord.get());
+//            auto pControlConsequence = std::make_unique<KafkaControlConsequenceRecordInfo>(*pTemp);       
+//
+//            OA::OAUInt8 ctrlType;
+//            ctrlType = jsonObj["controltype"];
+//
+//            switch (ctrlType)
+//            {
+//            case 0:/*RB: reverse bit*/
+//            {
+//                bool tempValue = (value) ? true : false;
+//
+//                if (listArgument[0])
+//                    tempValue = !tempValue;
+//
+//                varValue = tempValue;
+//
+//                break;
+//            }
+//            case 1: /*CB*/
+//            {
+//                value = (listArgument[0]) ? 2 : 1;
+//                varValue = value;
+//                break;
+//            }
+//            case 2: /*SP*/
+//            {
+//                value = (listArgument[0]) ? 1 : 0;
+//                varValue = value;
+//                break;
+//            }
+//            case 3: /*TapChgup*/
+//            {
+//                if (listArgument[0])
+//                    value++;
+//
+//                varValue = value;
+//
+//                break;
+//            }
+//            case 4: /*TapChgDown*/
+//            {
+//                if (listArgument[0])
+//                    value--;
+//
+//                varValue = value;
+//
+//                break;
+//            }
+//
+//            default:
+//                break;
+//            }
+//
+//            pRecord->SetValue(varValue);
+//            pRecord->SetQuality(OA_StatusCode_Good);
+//        }
+//
+//        if (itemType == 3 /*Control Scenario*/)
+//        {
+//            KafkaControlScenarioRecordInfo* pTemp = static_cast<KafkaControlScenarioRecordInfo*>(pRecord.get());
+//            pTemp->SetItemType(OA::ModelDataAPI::FepSimulationItemType::ControlScenario);
+//            auto pControlScenario = std::make_unique<KafkaControlScenarioRecordInfo>(*pTemp);
+//
+//            pControlScenario->SetKey(OA::StringUtility::Utf8ToUtf16(key));
+//
+//        }
+//
+//        if (itemType == 4 /*Trigger Scenario*/)
+//        {
+//            pRecord->SetItemType(OA::ModelDataAPI::FepSimulationItemType::TriggerScenario);
+//        }
+//
+//        m_pKafkaProducer->ProductMsg(pRecord.get());
+//
+//        m_mapKeyRecord.emplace(targetKey, std::move(pRecord));
+//    }
+//
+//    else
+//    {
+//        auto pOldRecord = std::move(it->second);
+//
+//        OA::OAString strTimestamp = timestamp.ToStringWithLocalTimeZone();
+//        pOldRecord->SetTimestamp(timestamp);
+//
+//        OA::OAVariant oldValue = pOldRecord->GetValue();
+//        OA::OAVariant newValue;
+//
+//        json data = jsonObj["inputArgument"];
+//        std::vector<bool> listArgument;
+//        for (auto it = data.begin(); it != data.end(); ++it)
+//        {
+//            listArgument.emplace_back(*it);
+//        }
+//
+//        if (itemType == 2 /*Control Consequence*/ && listArgument.size() == 1)
+//        {
+//            pOldRecord->SetItemType(OA::ModelDataAPI::FepSimulationItemType::ControlConsequence);
+//
+//            OA::OAUInt8 ctrlType;
+//            ctrlType = jsonObj["controltype"];
+//
+//            switch (ctrlType)
+//            {
+//            case 0:/*RB: reverse bit*/
+//            {
+//                bool tempValue = (oldValue) ? true : false;
+//
+//                if (listArgument[0])
+//                    tempValue = !tempValue;
+//
+//                newValue = tempValue;
+//
+//                break;
+//            }
+//            case 1: /*CB*/
+//            {
+//                newValue = (listArgument[0]) ? 2 : 1;
+//                break;
+//            }
+//            case 2: /*SP*/
+//            {
+//                newValue = (listArgument[0]) ? 1 : 0;
+//                break;
+//            }
+//            case 3: /*TapChgup*/
+//            {
+//                OA::OAUInt16 temp;
+//                oldValue.GetUInt16(temp);
+//
+//                if (listArgument[0])
+//                    temp++;
+//
+//                newValue = temp;
+//                break;
+//            }
+//            case 4: /*TapChgDown*/
+//            {
+//                OA::OAUInt16 temp;
+//                oldValue.GetUInt16(temp);
+//
+//                if (listArgument[0])
+//                    temp--;
+//
+//                newValue = temp;
+//                break;
+//            }
+//
+//            default:
+//                break;
+//            }
+//
+//            pOldRecord->SetValue(newValue);
+//            pOldRecord->SetQuality(OA_StatusCode_Good);
+//        }
+//
+//        if (itemType == 3 /*Control Scenario*/)
+//        {
+//            pOldRecord->SetItemType(OA::ModelDataAPI::FepSimulationItemType::ControlScenario);
+//        }
+//
+//        if (itemType == 4 /*Trigger Scenario*/)
+//        {
+//            pOldRecord->SetItemType(OA::ModelDataAPI::FepSimulationItemType::TriggerScenario);
+//        }
+//
+//        m_pKafkaProducer->ProductMsg(pOldRecord.get());
+//
+//        m_mapKeyRecord[targetKey] = std::move(pOldRecord);
+//    }
+//}
