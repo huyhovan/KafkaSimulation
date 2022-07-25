@@ -191,3 +191,25 @@ void KafkaControlScenarioRecordInfo::SetInputs(const std::vector<OA::OAUniqueID>
 {
     m_listInput = listInputs;
 }
+
+
+// TriggerScenario
+KafkaTriggerScenarioRecordInfo::KafkaTriggerScenarioRecordInfo()
+{
+    SetItemType(OA::ModelDataAPI::FepSimulationItemType::TriggerScenario);
+}
+
+KafkaTriggerScenarioRecordInfo::~KafkaTriggerScenarioRecordInfo()
+{
+
+}
+
+const OA::OAString& KafkaTriggerScenarioRecordInfo::GetContent() const
+{
+    return m_content;
+}
+
+void KafkaTriggerScenarioRecordInfo::SetContent(const OA::OAString& content)
+{
+    m_content = content;
+}

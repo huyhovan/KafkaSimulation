@@ -21,7 +21,6 @@ namespace OA
     }
 }
 class KafkaRecordInfo;
-class KafkaRandomGeneratorRecordInfo;
 
 class  KakfkaProducerDeliveryReportCallBack : public RdKafka::DeliveryReportCb
 {

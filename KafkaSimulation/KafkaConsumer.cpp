@@ -6,6 +6,7 @@
 
 #include <OAModelDataAPI/FepSimulation/FepSimulationItemInfo.h>
 #include <OAModelDataAPI/FepSimulation/FepSimulationControlConsequenceItemInfo.h>
+#include <OAModelDataAPI/FepSimulation/FepSimulationControlScenarioItemInfo.h>
 #include <OABase/StringUtility.h>
 
 #include <chrono>
@@ -368,7 +369,13 @@ void KafkaConsumer::CreateKafkaRecordControl(std::string msg, OA::OADateTime& ti
                     break;
                 }                  
                 case OA::ModelDataAPI::FepSimulationItemType::ControlScenario:
+                {
+                    OA::ModelDataAPI::FepSimulationControlScenarioItemInfo* pControlScenario = static_cast<OA::ModelDataAPI::FepSimulationControlScenarioItemInfo*>(pItem);
+
+                    // Create number records = number of input
                     break;
+                }
+                                 
                 case OA::ModelDataAPI::FepSimulationItemType::TriggerScenario:
                     break;
                 default:

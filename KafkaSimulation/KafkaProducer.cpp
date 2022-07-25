@@ -12,6 +12,7 @@
 #include <OAModelDataAPI/FepSimulation/FepSimulationRandomGeneratorItemInfo.h>
 #include <OAModelDataAPI/FepSimulation/FepSimulationControlConsequenceItemInfo.h>
 #include <OAModelDataAPI/FepSimulation/FepSimulationControlScenarioItemInfo.h>
+#include <OAModelDataAPI/FepSimulation/FepSimulationTriggerScenarioItemInfo.h>
 #include <OABase/StringUtility.h>
 #include <OAModelDataAPI/Compilation/CompilationDataAPI.h>
 
@@ -87,7 +88,8 @@ void KafkaProducer::ProductMsg()
         {
             jsonRecord["key"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetKey());
             jsonRecord["value"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetValue().ToString());
-            jsonRecord["timestamp"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetTimestamp().ToString());
+            OA::OADateTime timestamp = OA::OADateTime::Now();
+            jsonRecord["timestamp"] = OA::StringUtility::Utf16ToUtf8(timestamp.ToString());
             jsonRecord["status"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetQuality().ToString());
 
             break;
@@ -96,7 +98,8 @@ void KafkaProducer::ProductMsg()
         {
             jsonRecord["key"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetKey());
             jsonRecord["value"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetValue().ToString());
-            jsonRecord["timestamp"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetTimestamp().ToString());
+            OA::OADateTime timestamp = OA::OADateTime::Now();
+            jsonRecord["timestamp"] = OA::StringUtility::Utf16ToUtf8(timestamp.ToStringWithLocalTimeZone());
             jsonRecord["status"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetQuality().ToString());
 
             break;
@@ -178,7 +181,12 @@ void KafkaProducer::ProductMsg(KafkaRecordInfo* pRecord)
 
     jsonRecord["key"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetKey());
     jsonRecord["value"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetValue().ToString());
-    jsonRecord["timestamp"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetTimestamp().ToString());
+
+    /* for timestamp---*/
+     OA::OADateTime timestamp = OA::OADateTime::Now();
+     jsonRecord["timestamp"] = OA::StringUtility::Utf16ToUtf8(timestamp.ToStringWithLocalTimeZone());
+    /*-------*/
+    jsonRecord["datatype"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetDatatype());
     jsonRecord["status"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetQuality().ToString());    
 
     OA::OAString  stt;
@@ -235,7 +243,7 @@ void KafkaProducer::CreateKafkaRecord(const std::vector<std::unique_ptr<OA::Mode
             pRecord->SetItemType(OA::ModelDataAPI::FepSimulationItemType::Initialization);                                
 
             m_listRecords.emplace_back(std::move(pRecord));
-            m_mapKeyValue.emplace(key, initValue);
+            //m_mapKeyValue.emplace(key, initValue);
 
             break;
         }
@@ -296,7 +304,18 @@ void KafkaProducer::CreateKafkaRecord(const std::vector<std::unique_ptr<OA::Mode
             break;
         }
         case OA::ModelDataAPI::FepSimulationItemType::TriggerScenario:
+        {
+            auto pItem = static_cast<OA::ModelDataAPI::FepSimulationTriggerScenarioItemInfo*>(listItems[i].get());
+
+            std::unique_ptr<KafkaTriggerScenarioRecordInfo> pTriggerScenario = std::make_unique<KafkaTriggerScenarioRecordInfo>();
+
+            pTriggerScenario->SetKey(key);
+            pTriggerScenario->SetContent(pItem->GetContent());
+
+            m_listRecords.emplace_back(std::move(pTriggerScenario));
+
             break;
+        }           
         default:
             break;
         }       

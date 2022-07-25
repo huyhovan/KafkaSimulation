@@ -104,4 +104,18 @@ protected:
     OA::OAString m_content;
     OA::OAString m_parameters;
     std::vector<OA::OAUniqueID> m_listInput;
+
+};
+
+class KafkaTriggerScenarioRecordInfo : public KafkaRecordInfo
+{
+public:
+    KafkaTriggerScenarioRecordInfo();
+    virtual ~KafkaTriggerScenarioRecordInfo();
+
+    const OA::OAString& GetContent() const;    
+    void SetContent(const OA::OAString& content);
+
+protected:
+    OA::OAString m_content;  
 };

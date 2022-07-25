@@ -14,22 +14,33 @@ int main()
 
     Initialize();
 
-    const std::vector<std::unique_ptr<OA::ModelDataAPI::FepSimulationItemInfo>>& lisItems = m_pSimullationItemManager->GetListItem(); 
+    const std::vector<std::unique_ptr<OA::ModelDataAPI::FepSimulationItemInfo>>& lisItems = m_pSimullationItemManager->GetListItem();
 
     m_pKafkaProducer->CreateKafkaRecord(lisItems);
 
-    const std::vector<std::unique_ptr<KafkaRecordInfo>>& listRecord = m_pKafkaProducer->GetListRecord();     
-   
+    const std::vector<std::unique_ptr<KafkaRecordInfo>>& listRecord = m_pKafkaProducer->GetListRecord();
 
-    std::thread threadConsumer([]() {                              
+    // for handle 1 Control Scenario
+    for (auto& record : listRecord)
+    {
+        if (record->GetKey() == _T("(SAS) Simulate Data by Live Status"))
+        {
+            KafkaTriggerScenarioRecordInfo* controlScenarioRecord = static_cast<KafkaTriggerScenarioRecordInfo*>(record.get());
+
+            HandleControlScenarioRecord(controlScenarioRecord);
+        }
+    }
+
+
+    std::thread threadConsumer([]() {
         m_pKafkaConsumer->Start(500);
         });
 
-    int nLoop = 0 ;
+    int nLoop = 0;
     OA::OAUInt32 interval;
 
 
-    std::thread threadProducer([&nLoop,&listRecord, &interval]() {
+    std::thread threadProducer([&nLoop, &listRecord, &interval]() {
 
         while (true)
         {
@@ -38,17 +49,17 @@ int main()
                 OA::ModelDataAPI::FepSimulationItemType type = record->GetItemType();
                 if (type == OA::ModelDataAPI::FepSimulationItemType::Initialization)
                 {
-                    /*if (m_pKafkaProducer->HasDataChange(record.get()))
+                    if (m_pKafkaProducer->HasDataChange(record.get()))
                     {
                         m_pKafkaProducer->ProductMsg(record.get());
                     }
-                    continue;*/
+                    continue;
                 }
 
                 if (type == OA::ModelDataAPI::FepSimulationItemType::RandomGenerator)
                 {
                     KafkaRandomGeneratorRecordInfo* pRecord = static_cast<KafkaRandomGeneratorRecordInfo*>(record.get());
-                    if (pRecord->GetKey() == _T("AT1BCU.AT1BCUANN.AINZGGIO29.AnIn01.mag.f")) /*for testing 1 point generate random, control by ControlConsequence AT1BCU.AT1BCUCON.RBGGIO1.SPCSO02.Control*/
+                    if (pRecord->GetKey() != _T("AT1BCU.AT1BCUANN.AINZGGIO29.AnIn01.mag.f")) /*for testing 1 point generate random, control by ControlConsequence AT1BCU.AT1BCUCON.RBGGIO1.SPCSO02.Control*/
                     {
                         interval = pRecord->GetInterval();
                         int minValue, maxValue;
@@ -70,7 +81,7 @@ int main()
 
                             i++;
                         }
-                    }                    
+                    }
                 }
             }
 
@@ -82,9 +93,9 @@ int main()
 
         });
 
-   
+
     threadProducer.join();
-    threadConsumer.join();   
+    threadConsumer.join();
 
     return 0;
 }

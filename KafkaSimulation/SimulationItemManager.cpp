@@ -103,11 +103,11 @@ OA::OAStatus SimulationItemManager::LoadFepItem()
         if (pFepItemInfo->GetLinkTargets().size() > 0)
         {
             // Create Simulation Model
-            auto pSimulationModelNode = std::make_unique<SimulationModelNode>();
+            //auto pSimulationModelNode = std::make_unique<SimulationModelNode>();
 
             OA::OAUniqueID id = pFepItemInfo->GetLinkTargets().at(0).GetTargetUniqueId();
             OA::OAString keyTarget = OA::StringUtility::Utf8ToUtf16(id.GetIdentifier().IdentifierString());
-            pSimulationModelNode->SetKey(keyTarget);
+            //pSimulationModelNode->SetKey(keyTarget);
 
             OA::OAString key = OA::StringUtility::Utf8ToUtf16(pFepItemInfo->GetId().GetIdentifier().IdentifierString());
 
@@ -115,16 +115,16 @@ OA::OAStatus SimulationItemManager::LoadFepItem()
             {
                 if (key == fepSimulationItem->GetItemKey())
                 {
-                    pSimulationModelNode->SetItemInfo(fepSimulationItem.get());
+                    //pSimulationModelNode->SetItemInfo(fepSimulationItem.get());
                     OA::OAVariant value;
                     SetValueBaseOnFepSimulationItemInfo(fepSimulationItem.get(), value);
-                    pSimulationModelNode->SetValue(value);
+                    //pSimulationModelNode->SetValue(value);
 
                     break;
                 }
             }
 
-            m_listModelNodes.emplace_back(std::move(pSimulationModelNode));
+            //m_listModelNodes.emplace_back(std::move(pSimulationModelNode));
 
             m_listFepItems.emplace_back(std::move(pFepItemInfo));
         }         
