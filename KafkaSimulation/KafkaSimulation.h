@@ -218,10 +218,13 @@ void HandleControlScenarioRecord(KafkaControlScenarioRecordInfo* pRecord)
     std::string s = OA::StringUtility::Utf16ToUtf8(content);
 
     //std::cout << "\nContent of control D03F87L.D03F87LCON.RBGGIO2.SPCSO13.Control:\n " << s << std::endl;
+
+    // replace scriptname by key(nodename) in LUA script
+    // run script (ensure key present for 1 ScriptVariableType)
    
 }
 
-void HandleControlScenarioRecord(KafkaTriggerScenarioRecordInfo* pRecord)
+void HandleTriggerScenarioRecord(KafkaTriggerScenarioRecordInfo* pRecord)
 {
     std::map <std::string, OA::OAString> mapKeyScriptName;   
 

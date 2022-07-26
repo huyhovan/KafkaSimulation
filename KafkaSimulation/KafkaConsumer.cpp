@@ -310,6 +310,8 @@ void KafkaConsumer::CreateKafkaRecordControl(std::string msg, OA::OADateTime& ti
                     if (iter != m_mapKeyValue.end())
                     {
                         value = iter->second;
+
+                        pRecord->SetDataType(OA::StringUtility::BuiltinDataTypeToString(value.GetDataType()));
                     }
 
                     OA::ModelDataAPI::FepSimulationControlConsequenceItemInfo::ControlType controlType = pControlConsequence->GetControlType();

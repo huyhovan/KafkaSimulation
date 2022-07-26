@@ -23,9 +23,9 @@ int main()
     // for handle 1 Control Scenario
     for (auto& record : listRecord)
     {
-        if (record->GetKey() == _T("(SAS) Simulate Data by Live Status"))
+        if (record->GetKey() == _T("D03F87L.D03F87LCON.RBGGIO2.SPCSO13.Control"))
         {
-            KafkaTriggerScenarioRecordInfo* controlScenarioRecord = static_cast<KafkaTriggerScenarioRecordInfo*>(record.get());
+            KafkaControlScenarioRecordInfo* controlScenarioRecord = static_cast<KafkaControlScenarioRecordInfo*>(record.get());
 
             HandleControlScenarioRecord(controlScenarioRecord);
         }
@@ -59,7 +59,7 @@ int main()
                 if (type == OA::ModelDataAPI::FepSimulationItemType::RandomGenerator)
                 {
                     KafkaRandomGeneratorRecordInfo* pRecord = static_cast<KafkaRandomGeneratorRecordInfo*>(record.get());
-                    if (pRecord->GetKey() != _T("AT1BCU.AT1BCUANN.AINZGGIO29.AnIn01.mag.f")) /*for testing 1 point generate random, control by ControlConsequence AT1BCU.AT1BCUCON.RBGGIO1.SPCSO02.Control*/
+                    if (pRecord->GetKey() == _T("AT1BCU.AT1BCUANN.AINZGGIO29.AnIn01.mag.f")) /*for testing 1 point generate random, control by ControlConsequence AT1BCU.AT1BCUCON.RBGGIO1.SPCSO02.Control*/
                     {
                         interval = pRecord->GetInterval();
                         int minValue, maxValue;
