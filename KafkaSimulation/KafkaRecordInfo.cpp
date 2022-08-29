@@ -1,17 +1,40 @@
+
 #include "KafkaRecordInfo.h"
+
 #include <OAModelDataAPI/FepSimulation/FepSimulationItemInfo.h>
 #include <OAModelDataAPI/FepSimulation/FepSimulationControlScenarioItemInfo.h>
-
+#include <OAModelDataAPI/FepSimulation/FepSimulationTriggerScenarioItemInfo.h>
 
 KafkaRecordInfo::KafkaRecordInfo()
 {
-
+    
 }
 
 KafkaRecordInfo::~KafkaRecordInfo()
 {
 
 }
+
+bool operator==(const KafkaRecordInfo& lhs, const KafkaRecordInfo& rhs)
+{
+    if ((lhs.m_value == rhs.m_value)
+        && (lhs.m_statusCode == rhs.m_statusCode)
+        && (lhs.m_timeInterval == rhs.m_timeInterval)
+        )
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool operator!=(const KafkaRecordInfo& lhs, const KafkaRecordInfo& rhs)
+{
+    return !operator==(lhs, rhs);
+}
+
 
 OA::OAString KafkaRecordInfo::GetKey() const
 {
@@ -23,19 +46,24 @@ OA::OAVariant KafkaRecordInfo::GetValue() const
     return m_value;
 }
 
-OA::OADateTime KafkaRecordInfo::GetTimestamp() const
+OA::OAInt64 KafkaRecordInfo::GetTimeInterval() const
 {
-    return m_timeStamp;
+    return m_timeInterval;
 }
 
-OA::OAStatus KafkaRecordInfo::GetQuality() const
+OA::OAUInt32 KafkaRecordInfo::GetQuality() const
 {
-    return m_status;
+    return m_statusCode;
 }
 
-OA::OAString KafkaRecordInfo::GetDatatype() const
+OA::OAUInt16 KafkaRecordInfo::GetDataTypeId() const
 {
-    return m_strDataType;
+    return m_dataTypeId;
+}
+
+std::vector<OA::OAMethodParameter> KafkaRecordInfo::GetListMethodParam() const
+{
+    return m_listParam;
 }
 
 OA::ModelDataAPI::FepSimulationItemType KafkaRecordInfo::GetItemType() const
@@ -53,19 +81,19 @@ void KafkaRecordInfo::SetValue(OA::OAVariant value)
     m_value = value;
 }
 
-void KafkaRecordInfo::SetTimestamp(OA::OADateTime timestamp)
+void KafkaRecordInfo::SetTimeInterval(OA::OAInt64 timeInterval)
 {
-    m_timeStamp = timestamp;
+    m_timeInterval = timeInterval;
 }
 
-void KafkaRecordInfo::SetQuality(OA::OAStatus status)
+void KafkaRecordInfo::SetQuality(OA::OAUInt32 statusCode)
 {
-    m_status = status;
+    m_statusCode = statusCode;
 }
 
-void KafkaRecordInfo::SetDataType(OA::OAString dataType)
+void KafkaRecordInfo::SetDataTypeId(OA::OAUInt16 dataTypeId)
 {
-    m_strDataType = dataType;
+    m_dataTypeId = dataTypeId;
 }
 
 void KafkaRecordInfo::SetItemType(OA::ModelDataAPI::FepSimulationItemType itemType)
@@ -74,11 +102,18 @@ void KafkaRecordInfo::SetItemType(OA::ModelDataAPI::FepSimulationItemType itemTy
 }
 
 
+void KafkaRecordInfo::SetListMethodParam(const std::vector<OA::OAMethodParameter>& listMethodParam)
+{
+    m_listParam.resize(listMethodParam.size());
+    m_listParam = listMethodParam;
+}
+
 // Random Generator RecordInfo 
 
-KafkaRandomGeneratorRecordInfo::KafkaRandomGeneratorRecordInfo()    
+KafkaRandomGeneratorRecordInfo::KafkaRandomGeneratorRecordInfo()
+    : m_bGenning(true)
 {
-    //SetItemType(OA::ModelDataAPI::FepSimulationItemType::RandomGenerator);
+    SetItemType(OA::ModelDataAPI::FepSimulationItemType::RandomGenerator);
 }
 
 KafkaRandomGeneratorRecordInfo::~KafkaRandomGeneratorRecordInfo()
@@ -101,6 +136,11 @@ void KafkaRandomGeneratorRecordInfo::SetMaxValue(OA::OAVariant maxValue)
     m_maxValue = maxValue;
 }
 
+void KafkaRandomGeneratorRecordInfo::SetIsGenning(bool isGenning)
+{
+    m_bGenning = isGenning;
+}
+
 OA::OAUInt32 KafkaRandomGeneratorRecordInfo::GetInterval() const
 {
     return m_interval;
@@ -114,6 +154,11 @@ OA::OAVariant KafkaRandomGeneratorRecordInfo::GetMinValue() const
 OA::OAVariant KafkaRandomGeneratorRecordInfo::GetMaxValue() const
 {
     return m_maxValue;
+}
+
+bool KafkaRandomGeneratorRecordInfo::IsGenning() const
+{
+    return m_bGenning;
 }
 
 
@@ -196,6 +241,7 @@ void KafkaControlScenarioRecordInfo::SetInputs(const std::vector<OA::OAUniqueID>
 // TriggerScenario
 KafkaTriggerScenarioRecordInfo::KafkaTriggerScenarioRecordInfo()
 {
+    
     SetItemType(OA::ModelDataAPI::FepSimulationItemType::TriggerScenario);
 }
 
@@ -209,7 +255,37 @@ const OA::OAString& KafkaTriggerScenarioRecordInfo::GetContent() const
     return m_content;
 }
 
+std::vector<OA::ModelDataAPI::FepSimulationTriggerScenarioInput> KafkaTriggerScenarioRecordInfo::GetInputs() const
+{
+    return m_inputs;
+}
+
+bool KafkaTriggerScenarioRecordInfo::GetRepeatEnabled() const
+{
+    return m_repeatEnabled;
+}
+
+int KafkaTriggerScenarioRecordInfo::GetRepeatInterval() const
+{
+    return m_repeatInterval;
+}
+
 void KafkaTriggerScenarioRecordInfo::SetContent(const OA::OAString& content)
 {
     m_content = content;
+}
+
+void KafkaTriggerScenarioRecordInfo::SetInputs(const std::vector<OA::ModelDataAPI::FepSimulationTriggerScenarioInput>& listInputs)
+{
+    m_inputs = listInputs;
+}
+
+void KafkaTriggerScenarioRecordInfo::SetRepeatEnable(bool bEnable)
+{
+    m_repeatEnabled = bEnable;
+}
+
+void KafkaTriggerScenarioRecordInfo::SetRepeatInterval(int interval)
+{
+    m_repeatInterval = interval;
 }

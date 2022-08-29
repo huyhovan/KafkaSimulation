@@ -16,6 +16,6 @@
 *.aps
 *.cd
 *.sln
-KafkaSimulation.vcxproj
-KafkaSimulation.vcxproj.filters
-KafkaSimulation.vcxproj.user
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user

@@ -1,5 +1,4 @@
 #include "KafkaProducer.h"
-#include "KafkaRecordInfo.h"
 #include "KafkaConfig.h"
 
 #include <nlohmann/json.hpp>
@@ -82,25 +81,95 @@ void KafkaProducer::ProductMsg()
 
         int nDump = 4; // format for Json record
 
-        switch (itemType)
+        if (itemType == OA::ModelDataAPI::FepSimulationItemType::Initialization || itemType == OA::ModelDataAPI::FepSimulationItemType::RandomGenerator)
+        {
+            jsonRecord["key"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetKey());
+            jsonRecord["datatype"] = m_listRecords[i]->GetDataTypeId();
+
+            if (m_listRecords[i]->GetDataTypeId() == OA_DataType_Boolean)
+            {
+                OA::OABoolean outvalue = false;
+                m_listRecords[i]->GetValue().GetBoolean(outvalue);
+                jsonRecord["value"] = outvalue;
+            }
+            else if (m_listRecords[i]->GetDataTypeId() == OA_DataType_Float)
+            {
+                OA::OAFloat outvalue;
+                m_listRecords[i]->GetValue().GetFloat(outvalue);
+                jsonRecord["value"] = outvalue;
+            }
+            else if (m_listRecords[i]->GetDataTypeId() == OA_DataType_Double)
+            {
+                OA::OADouble outvalue;
+                m_listRecords[i]->GetValue().GetDouble(outvalue);
+                jsonRecord["value"] = outvalue;
+            }
+            else if (m_listRecords[i]->GetDataTypeId() == OA_DataType_String)
+            {
+                OA::OAString outvalue = m_listRecords[i]->GetValue().ToString();
+                jsonRecord["value"] = outvalue;
+            }
+            else
+            {
+                OA::OAInt64 outValue;
+                m_listRecords[i]->GetValue().GetInt64(outValue);
+                jsonRecord["value"] = outValue;
+            }
+
+            OA::OADateTime timestamp = OA::OADateTime::Now();
+            OA::OAInt64 interval = OA::OAInt64(timestamp);
+            jsonRecord["timestamp"] = interval;
+
+            jsonRecord["status"] = m_listRecords[i]->GetQuality();
+        }
+
+       /* switch (itemType)
         {
         case OA::ModelDataAPI::FepSimulationItemType::Initialization:
         {
-            jsonRecord["key"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetKey());
-            jsonRecord["value"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetValue().ToString());
-            OA::OADateTime timestamp = OA::OADateTime::Now();
-            jsonRecord["timestamp"] = OA::StringUtility::Utf16ToUtf8(timestamp.ToString());
-            jsonRecord["status"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetQuality().ToString());
-
+            
             break;
         }
         case OA::ModelDataAPI::FepSimulationItemType::RandomGenerator:
         {
             jsonRecord["key"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetKey());
-            jsonRecord["value"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetValue().ToString());
+            jsonRecord["datatype"] = m_listRecords[i]->GetDataTypeId();
+
+            if (m_listRecords[i]->GetDataTypeId() == OA_DataType_Boolean)
+            {
+                OA::OABoolean outvalue = false;
+                m_listRecords[i]->GetValue().GetBoolean(outvalue);
+                jsonRecord["value"] = outvalue;
+            }
+            else if (m_listRecords[i]->GetDataTypeId() == OA_DataType_Float)
+            {
+                OA::OAFloat outvalue;
+                m_listRecords[i]->GetValue().GetFloat(outvalue);
+                jsonRecord["value"] = outvalue;
+            }
+            else if (m_listRecords[i]->GetDataTypeId() == OA_DataType_Double)
+            {
+                OA::OADouble outvalue;
+                m_listRecords[i]->GetValue().GetDouble(outvalue);
+                jsonRecord["value"] = outvalue;
+            }
+            else if (m_listRecords[i]->GetDataTypeId() == OA_DataType_String)
+            {
+                OA::OAString outvalue = m_listRecords[i]->GetValue().ToString();
+                jsonRecord["value"] = outvalue;
+            }
+            else
+            {
+                OA::OAInt64 outValue;
+                m_listRecords[i]->GetValue().GetInt64(outValue);
+                jsonRecord["value"] = outValue;
+            }
+
             OA::OADateTime timestamp = OA::OADateTime::Now();
-            jsonRecord["timestamp"] = OA::StringUtility::Utf16ToUtf8(timestamp.ToStringWithLocalTimeZone());
-            jsonRecord["status"] = OA::StringUtility::Utf16ToUtf8(m_listRecords[i]->GetQuality().ToString());
+            OA::OAInt64 interval = OA::OAInt64(timestamp);
+            jsonRecord["timestamp"] = interval;
+
+            jsonRecord["status"] = m_listRecords[i]->GetQuality();
 
             break;
         }          
@@ -112,7 +181,7 @@ void KafkaProducer::ProductMsg()
             break;
         default:
             break;
-        }
+        }*/
 
         OA::OAString  stt;
         std::string s = jsonRecord.dump(nDump);
@@ -176,24 +245,61 @@ void KafkaProducer::ProductMsg(KafkaRecordInfo* pRecord)
     json jsonRecord;
 
     int nDump = 0;
-
-    nDump = 4;
+    nDump = 1;
 
     jsonRecord["key"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetKey());
-    jsonRecord["value"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetValue().ToString());
+    jsonRecord["datatype"] = pRecord->GetDataTypeId();
 
-    /* for timestamp---*/
-     OA::OADateTime timestamp = OA::OADateTime::Now();
-     jsonRecord["timestamp"] = OA::StringUtility::Utf16ToUtf8(timestamp.ToStringWithLocalTimeZone());
-    /*-------*/
-    jsonRecord["datatype"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetDatatype());
-    jsonRecord["status"] = OA::StringUtility::Utf16ToUtf8(pRecord->GetQuality().ToString());    
+    if (pRecord->GetDataTypeId() == OA_DataType_Boolean)
+    {
+        OA::OABoolean outvalue = false;
+        pRecord->GetValue().GetBoolean(outvalue);
+        jsonRecord["value"] = outvalue;
+    }
+    else if (pRecord->GetDataTypeId() == OA_DataType_Float)
+    {
+        OA::OAFloat outvalue;
+        pRecord->GetValue().GetFloat(outvalue); 
+        jsonRecord["value"] = outvalue;
+    }
+    else if (pRecord->GetDataTypeId() == OA_DataType_Double)
+    {
+        OA::OADouble outvalue;
+        pRecord->GetValue().GetDouble(outvalue);
+        jsonRecord["value"] = outvalue;
+    }
+    else if (pRecord->GetDataTypeId() == OA_DataType_String)
+    {
+        OA::OAString outvalue = pRecord->GetValue().ToString();
+        jsonRecord["value"] = outvalue.c_str();
+    }
+    else
+    {
+        OA::OAInt64 outValue;
+        pRecord->GetValue().GetInt64(outValue);
+        jsonRecord["value"] = outValue;
+    }
+
+    OA::OADateTime timestamp = OA::OADateTime::Now();   
+    jsonRecord["timestamp"] = OA::OAInt64(timestamp);
+
+    jsonRecord["status"] = OA_StatusCode_Good; // pRecord->GetQuality();
 
     OA::OAString  stt;
     std::string s = jsonRecord.dump(nDump);
 
+    // Create Key for KafkaRecord
+    std::string* key = new std::string(OA::StringUtility::Utf16ToUtf8(pRecord->GetKey()));
+    
     // Produce Message
-    RdKafka::ErrorCode resp = m_pProducer->produce(m_pTopic, m_nPpartition, RdKafka::Producer::RK_MSG_COPY /*copy payload*/, const_cast<char*>(s.c_str()), s.size(), NULL, NULL);
+    RdKafka::ErrorCode resp = m_pProducer->produce(
+        m_pTopic,
+        m_nPpartition, 
+        RdKafka::Producer::RK_MSG_COPY /*copy payload*/, 
+        const_cast<char*>(s.c_str()), 
+        s.size(),       
+        key,
+        NULL);
     if (resp != RdKafka::ERR_NO_ERROR)
     {
         std::cerr << "Produce failed: " << RdKafka::err2str(resp) << std::endl;
@@ -205,9 +311,22 @@ void KafkaProducer::ProductMsg(KafkaRecordInfo* pRecord)
     // wait for message to be delivery  //firecat add
     while (m_pProducer->outq_len() > 0)
     {
+        int remain = m_pProducer->outq_len();
         stt = (_T("Waiting for %d\n"), m_pProducer->outq_len());
         m_pProducer->poll(100);
     }
+}
+
+void KafkaProducer::HandleRandomGeneration(boost::asio::io_service& io_service, const std::vector<KafkaRandomGeneratorRecordInfo*>& listRecord)
+{
+    //std::unique_ptr<HandleTimeout> handleTimer = std::make_unique<HandleTimeout>(io_service, this, listRecord);
+
+    //boost::asio::deadline_timer timer(io_service);
+
+   /* timer.expires_from_now(boost::posix_time::millisec(listRecord[0]->GetInterval()));
+    timer.async_wait(boost::bind(&KafkaProducer::Call)*/
+
+
 }
 
 void KafkaProducer::CreateKafkaRecord(const std::vector<std::unique_ptr<OA::ModelDataAPI::FepSimulationItemInfo>>& listItems)
@@ -239,7 +358,7 @@ void KafkaProducer::CreateKafkaRecord(const std::vector<std::unique_ptr<OA::Mode
 
             pRecord->SetKey(key);
             pRecord->SetValue(initValue);
-            pRecord->SetDataType(strDataType);
+            pRecord->SetDataTypeId(pItem->GetDataType());
             pRecord->SetItemType(OA::ModelDataAPI::FepSimulationItemType::Initialization);                                
 
             m_listRecords.emplace_back(std::move(pRecord));
@@ -255,9 +374,9 @@ void KafkaProducer::CreateKafkaRecord(const std::vector<std::unique_ptr<OA::Mode
      
             pRandomRecord->SetKey(key);
 
-            OA::OAUInt16 dataType = pItem->GetDataType();
-            OA::OAString strDataType = OA::StringUtility::BuiltinDataTypeToString(dataType);
-            pRandomRecord->SetDataType(strDataType);
+            //OA::OAUInt16 dataType = pItem->GetDataType();
+            //OA::OAString strDataType = OA::StringUtility::BuiltinDataTypeToString(dataType);
+            pRandomRecord->SetDataTypeId(pItem->GetDataType());
 
             OA::OAUInt32 interval = pItem->GetInterval();
             pRandomRecord->SetInterval(interval);            
@@ -351,17 +470,10 @@ void KafkaProducer::CreateSingleRandomRecord()
 
     OA::OAString keyRandomTest = _T("PointRandomTest");
     randomRecord->SetKey(keyRandomTest);
-    randomRecord->SetDataType(OA::StringUtility::BuiltinDataTypeToString(OA_DataType_Float));
+    randomRecord->SetDataTypeId((OA_DataType_Float));
     randomRecord->SetInterval(5000);
     randomRecord->SetMinvalue(1);
     randomRecord->SetMaxValue(1000);
-
-    /* std::random_device                  rand_dev;
-     std::mt19937                        generator(rand_dev());
-     std::uniform_int_distribution<int>  distr(1, 1000);
-
-     OA::OAVariant value = distr(generator);
-     randomRecord->SetValue(value);*/
 
     m_listRecords.emplace_back(std::move(randomRecord));
 }
@@ -381,10 +493,56 @@ void KafkaProducer::CreateInitializeRecord()
 
         pTestRecord->SetKey(key);
         pTestRecord->SetValue(initValue);
-        pTestRecord->SetDataType(strDataType);
+        pTestRecord->SetDataTypeId(OA_DataType_Float);
         pTestRecord->SetItemType(OA::ModelDataAPI::FepSimulationItemType::Initialization);
 
         m_listRecords.emplace_back(std::move(pTestRecord));        
+    }
+}
+
+
+void KafkaProducer::ProductRandomMsg(const std::vector<KafkaRandomGeneratorRecordInfo*>& listRecord)
+{
+    OA::OABoolean bValue = true;
+
+    for (auto& pRecord : listRecord)
+    {
+        if (/*false*/true/*pRecord->GetKey() == _T("SAS_SIM.S1.A1.MEASF.P3") || pRecord->GetKey() == _T("SAS_SIM.S1.A1.MEASF.P4")*/)
+        {
+            if (pRecord->GetDataTypeId() == OA_DataType_Boolean)
+            {
+                bValue = !bValue;
+                OA::OAVariant value = bValue;
+                pRecord->SetValue(value);
+                if (pRecord->IsGenning() == true && HasDataChange(pRecord))
+                {
+                    //std::lock_guard<std::mutex> guard(m_mutex);
+
+                    ProductMsg(pRecord);
+                    //m_pSimulationMng->UpdateMapModel(pRecord->GetKey(), pRecord);
+                }
+            }
+            else
+            {
+                OA::OAFloat minValue, maxValue;
+                pRecord->GetMinValue().GetFloat(minValue);
+                pRecord->GetMaxValue().GetFloat(maxValue);
+
+                std::random_device                  rand_dev;
+                std::mt19937                        generator(rand_dev());
+                std::uniform_real_distribution<OA::OAFloat>  distr(minValue, maxValue);
+
+                OA::OAVariant value = distr(generator);
+                pRecord->SetValue(value);
+                if (pRecord->IsGenning() == true && HasDataChange(pRecord))
+                {
+                    //std::lock_guard<std::mutex> guard(m_mutex);
+
+                    ProductMsg(pRecord);
+                    //m_pSimulationMng->UpdateMapModel(pRecord->GetKey(), pRecord);
+                }
+            }
+        }
     }
 }
 

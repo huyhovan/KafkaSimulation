@@ -6,13 +6,32 @@
 #include <Kafka/rdkafkacpp.h>
 #include <OABase/OAString.h>
 #include <OABase/OAVariant.h>
+#include <OABase/OAUniqueID.h>
 
 #include <nlohmann/json.hpp>
+#include <ScriptModule/ScriptModule.h>
+#include <ScriptModule/ScriptUserType.h>
+#include <ScriptModule/ScriptExporter.h>
+
+#include <OAModelDataAPI/OAModelDataAPIUtility.h>
 
 class SimulationItemManager;
 class KafkaControlConsequenceRecordInfo;
 class KafkaProducer;
 class KafkaRecordInfo;
+
+struct InputNodeInScript
+{
+    OA::OAString str;
+    size_t pos;
+
+    InputNodeInScript(const OA::OAString& _str, size_t _pos)
+        :str(_str), pos(_pos) {};
+    InputNodeInScript(OA::OAString&& _str, size_t _pos)
+        :str(std::move(_str)), pos(_pos) {};
+
+    bool operator==(const InputNodeInScript& rhs) const { return (this->str == rhs.str) && (this->pos == rhs.pos); }
+};
 
 namespace OA
 {
@@ -41,7 +60,11 @@ protected:
     void CreateKafkaRecordControl(std::string msg, OA::OADateTime& timestamp);
     OA::ModelDataAPI::FepSimulationItemType GetSimualtatioItemType(int nItemType);
     OA::OADateTime GetTimestampWithLocalTimeZone(RdKafka::MessageTimestamp& kafkaTimestamp); // KafkaTimestamp start by 1653 < 1601 of OADatetime
-    //void ParseKafkaDetection(std::string msg, OA::OADateTime timestamp);    
+
+    void HandleControlScenarioRecord(KafkaControlScenarioRecordInfo* pRecord, const std::vector<bool>& listInputArg);
+    bool HandleDataChangedMonitorVar(OA::OAString& keyControl, std::vector<bool> listArgControl);
+public: /*public for test*/
+    void HandleTriggerScenario(KafkaTriggerScenarioRecordInfo* pRecord);
 
 protected:
     std::string m_strBroker;
