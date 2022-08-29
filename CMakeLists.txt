@@ -31,3 +31,6 @@ add_executable(KafkaSimulation ${SOURCES} ${INCLUDES})
 set_property(TARGET KafkaSimulation PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${KAFKA_SIMULATOR_DIR}/Libraries/bin")
 
 TARGET_LINK_LIBRARIES(KafkaSimulation  OABaseD.lib OAModelDataAPID.lib rdkafka++.lib rdkafka.lib ScriptModuleD.lib )
+
+add_subdirectory(ScriptModule)
+add_subdirectory(Lua)
